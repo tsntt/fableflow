@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS transfers, accounts, banks, tmp_banks CASCADE;
