@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/tsntt/fableflow/middleware"
 	"github.com/tsntt/fableflow/src/service/accounts"
@@ -38,10 +39,11 @@ func NewApiServer(ts *transfers.TransferService, as *accounts.AccountService, ps
 
 func (srv *ApiServer) Run() {
 
-	router := bunrouter.New()
+	router := bunrouter.New(
+		bunrouter.Use(middleware.Cors),
+		bunrouter.Use(middleware.RateLimit),
+	)
 
-	// TODO: auth middleware
-	// TODO: Better routes path
 	router.POST("/register", bunrouter.HTTPHandlerFunc(srv.HandlerRequestNewBank))
 	router.GET("/activate/:hash", bunrouter.HTTPHandlerFunc(srv.HandlerActivateBank))
 
@@ -71,8 +73,15 @@ func (srv *ApiServer) Run() {
 
 	srv.trasactionsWaitGroup.Wait()
 
+	server := http.Server{
+		Addr:         os.Getenv("PORT"),
+		Handler:      router,
+		ReadTimeout:  time.Second * 2,
+		WriteTimeout: time.Second * 2,
+	}
+
 	log.Printf("Api listening at port: 4000")
-	go http.ListenAndServe(":4000", router)
+	go server.ListenAndServe()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

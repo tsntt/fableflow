@@ -20,15 +20,14 @@ type Repository interface {
 	UpdateStatus(id uuid.UUID, status Status) error
 }
 
-// TODO: make DTO for this type
 type Model struct {
-	ID        uuid.UUID `json:"id"`
-	Receiver  uuid.UUID `json:"receiver"`
-	Sender    uuid.UUID `json:"sender"`
-	Amount    Amount    `json:"amount"`
-	Status    Status    `json:"status"`
-	Scheduled Scheduled `json:"scheduled"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID
+	Receiver  uuid.UUID
+	Sender    uuid.UUID
+	Amount    Amount
+	Status    Status
+	Scheduled Scheduled
+	CreatedAt time.Time
 }
 
 func New(sender, receiver uuid.UUID, val Amount, date Scheduled) Model {

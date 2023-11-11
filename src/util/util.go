@@ -1,10 +1,11 @@
 package util
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"html/template"
 	"log"
 	"math/rand"
 	"net/http"
@@ -19,7 +20,7 @@ func NewAccountToken(bid, id string) (string, error) {
 	tk := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"bid": bid,
 		"id":  id,
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
+		"exp": time.Now().Add(time.Second * 24).Unix(),
 	})
 
 	tkString, err := tk.SignedString([]byte(os.Getenv("JWTKEY")))
@@ -48,38 +49,44 @@ func VerifyToken(tkstring string) (jwt.MapClaims, error) {
 	return claims, nil
 }
 
-func SendSimpleMessage(link string) (string, error) {
-	// TODO: this must be env var
+func SendSimpleMessage(link, recipient string) {
 	domain := os.Getenv("MAILDOMAIN")
 	apiKey := os.Getenv("MAILKEY")
 
 	mg := mailgun.NewMailgun(domain, apiKey)
 
 	sender := "Mailgun Sandbox <postmaster@sandbox8294e2fcbc994631a26f60f90df9a173.mailgun.org>"
-	recipient := "tsn.teo@proton.me"
-
 	subject := "FableFlow Conrfimation Request"
-	body := `<!DOCTYPE html>
-	<html lang="en">
-	<body>
-		<h1>Please activate your api access</h1>
-		<a href="` + link + `">Click here!</a>
-	</body>
-	</html>`
 
 	m := mg.NewMessage(sender, subject, "", recipient)
 
-	m.SetHtml(body)
+	t, err := template.ParseFiles("src/tmpl/email.html")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	data := struct {
+		Link string
+	}{
+		Link: link,
+	}
+
+	buf := new(bytes.Buffer)
+	if err := t.Execute(buf, data); err != nil {
+		log.Println(err, buf)
+		return
+	}
+
+	m.SetHtml(buf.String())
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	resp, id, err := mg.Send(ctx, m)
-
-	fmt.Printf("%+v", resp)
-
-	// TODO: remove returns and deal with errors
-	return id, err
+	if err != nil {
+		log.Printf("resp: %s\nid: %s\nerr: %v", resp, id, err)
+	}
 }
 
 func RandHash() string {
@@ -95,19 +102,8 @@ func RandHash() string {
 	return hash
 }
 
-func addCorsHeader(res http.ResponseWriter) {
-	headers := res.Header()
-	headers.Add("Access-Control-Allow-Origin", "*")
-	headers.Add("Vary", "Origin")
-	headers.Add("Vary", "Access-Control-Request-Method")
-	headers.Add("Vary", "Access-Control-Request-Headers")
-	headers.Add("Access-Control-Allow-Headers", "*")
-	headers.Add("Access-Control-Allow-Methods", "*")
-}
-
 func WriteJson(w http.ResponseWriter, status int, msg any) {
 	w.Header().Set("Content-Type", "application/json")
-	addCorsHeader(w)
 	w.WriteHeader(status)
 
 	err := json.NewEncoder(w).Encode(msg)
