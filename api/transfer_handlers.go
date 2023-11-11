@@ -84,7 +84,7 @@ func (srv *ApiServer) HandleCancelTransfer(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	id, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/cancel/"))
+	id, err := uuid.Parse(strings.TrimPrefix(r.URL.Path, "/account/tranfer/"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
