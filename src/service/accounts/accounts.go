@@ -2,7 +2,6 @@ package accounts
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/tsntt/fableflow/src/domain/account"
@@ -60,8 +59,6 @@ func (s *AccountService) GetByID(id uuid.UUID) (*account.Model, error) {
 
 func (s *AccountService) Update(a account.Model) error {
 	err := s.accountRepository.UpdateBalance(a.ID, a.Balance)
-
-	fmt.Println("service", a.ID, a.Balance)
 
 	return err
 }

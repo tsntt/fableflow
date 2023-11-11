@@ -15,6 +15,16 @@ import (
 	"github.com/tsntt/fableflow/src/util"
 )
 
+type FullTransferResDTO struct {
+	ID        uuid.UUID `json:"id"`
+	Receiver  uuid.UUID `json:"receiver"`
+	Sender    uuid.UUID `json:"sender"`
+	Amount    float64   `json:"amount"`
+	Status    string    `json:"status"`
+	Scheduled time.Time `json:"scheduled"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 func (srv *ApiServer) HandleNewTransfer(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "OPTIONS" {
 		util.WriteJson(w, http.StatusOK, "")
@@ -118,7 +128,17 @@ func (srv *ApiServer) HandleGetTransferByID(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	util.WriteJson(w, http.StatusOK, transfer)
+	res := FullTransferResDTO{
+		ID:        transfer.ID,
+		Sender:    transfer.Sender,
+		Receiver:  transfer.Receiver,
+		Amount:    float64(transfer.Amount),
+		Status:    string(transfer.Status),
+		Scheduled: transfer.Scheduled.Time(),
+		CreatedAt: transfer.CreatedAt,
+	}
+
+	util.WriteJson(w, http.StatusOK, res)
 }
 func (srv *ApiServer) HandleGetTransfersByAccount(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
@@ -134,7 +154,21 @@ func (srv *ApiServer) HandleGetTransfersByAccount(w http.ResponseWriter, r *http
 		return
 	}
 
-	util.WriteJson(w, http.StatusOK, ts)
+	res := make([]FullTransferResDTO, len(ts))
+
+	for i, transfer := range ts {
+		res[i] = FullTransferResDTO{
+			ID:        transfer.ID,
+			Sender:    transfer.Sender,
+			Receiver:  transfer.Receiver,
+			Amount:    float64(transfer.Amount),
+			Status:    string(transfer.Status),
+			Scheduled: transfer.Scheduled.Time(),
+			CreatedAt: transfer.CreatedAt,
+		}
+	}
+
+	util.WriteJson(w, http.StatusOK, res)
 }
 func (srv *ApiServer) HandleGetTransfersByPeriod(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
@@ -157,5 +191,19 @@ func (srv *ApiServer) HandleGetTransfersByPeriod(w http.ResponseWriter, r *http.
 		return
 	}
 
-	util.WriteJson(w, http.StatusOK, ts)
+	res := make([]FullTransferResDTO, len(ts))
+
+	for i, transfer := range ts {
+		res[i] = FullTransferResDTO{
+			ID:        transfer.ID,
+			Sender:    transfer.Sender,
+			Receiver:  transfer.Receiver,
+			Amount:    float64(transfer.Amount),
+			Status:    string(transfer.Status),
+			Scheduled: transfer.Scheduled.Time(),
+			CreatedAt: transfer.CreatedAt,
+		}
+	}
+
+	util.WriteJson(w, http.StatusOK, res)
 }

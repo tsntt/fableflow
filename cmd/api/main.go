@@ -42,26 +42,12 @@ func main() {
 	ctx := context.Background()
 
 	c := cron.New()
-	c.AddFunc("30 8 * * 1-5", func() {
+	c.AddFunc("30 8 * * *", func() {
 		processingService.TransactionsScheduledForToday(ctx, api.MsgChan)
 	})
 	c.Start()
 
 	api := api.NewApiServer(transferService, accountService, processingService, bankService)
-
-	// testing token things
-	// tk, err := tokens.NewBankToken("www.google.com", "1234")
-	// fmt.Println(tk, err)
-
-	// tk2, err := tokens.NewAccountToken("4321", "123")
-	// fmt.Println(tk2, err)
-
-	// claims, err := tokens.VerifyToken(tk)
-	// fmt.Println(claims["id"], err)
-
-	// claims2, err := tokens.VerifyToken(tk2)
-	// fmt.Println(claims2, err)
-	// end token things
 
 	api.Run()
 }

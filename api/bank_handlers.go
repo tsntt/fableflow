@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/tsntt/fableflow/src/service/banks"
@@ -23,8 +24,8 @@ func (s *ApiServer) HandlerRequestNewBank(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	link := `http://localhost:4000/activate/` + res.Hash
-	go util.SendSimpleMessage(link)
+	link := `http://` + os.Getenv("HOST") + `/activate/` + res.Hash
+	go util.SendSimpleMessage(link, req.Email)
 
 	util.WriteJson(w, http.StatusCreated, "")
 }

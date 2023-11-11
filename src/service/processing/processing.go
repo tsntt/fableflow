@@ -30,9 +30,19 @@ func NewProcessingService(as *accounts.AccountService, ts *transfers.TransferSer
 }
 
 func (s *ProcessingService) Transaction(ctx context.Context, channel chan<- string, tr *transfer.Model) error {
-	fmt.Println("started bg job")
+	fmt.Println("started processing transaction")
+	/*
+		(only sender => withdraw)
+		(only receiver => deposit)
+		(both => transfer)
+	*/
+	var err error
+	var senderAcc *account.Model
+	var receiverAcc *account.Model
 
-	if tr.Receiver == (uuid.UUID{}) && tr.Sender == (uuid.UUID{}) {
+	emptyID := uuid.UUID{}
+
+	if tr.Receiver == emptyID && tr.Sender == emptyID {
 		return errors.New("cannot operate without accounts")
 	}
 
@@ -40,28 +50,15 @@ func (s *ProcessingService) Transaction(ctx context.Context, channel chan<- stri
 		return errors.New("cannot operate between same account")
 	}
 
-	var err error
-	var senderAcc *account.Model
-	var receiverAcc *account.Model
-
-	if tr.Sender != (uuid.UUID{}) { // it is a transfer
+	if tr.Sender != emptyID {
 		senderAcc, err = s.accountService.GetByID(tr.Sender)
 		if err != nil {
 			return err
 		}
-
-	} // else is a deposit
-
-	if tr.Receiver != (uuid.UUID{}) {
-		receiverAcc, err = s.accountService.GetByID(tr.Receiver) // receiver exists? transfer
-		if err != nil {
-			log.Printf("User that should receive fund do not exists: %+v\n", err)
-			return err
-		}
-	} // else is a withdraw
+	}
 
 	if time.Now().After(tr.Scheduled.Time()) {
-		if tr.Sender != (uuid.UUID{}) && senderAcc.Balance-float64(tr.Amount) < 0 {
+		if tr.Sender != emptyID && senderAcc.Balance-float64(tr.Amount) < 0 {
 			tr, err = s.transferService.Rejecte(tr.ID)
 		} else {
 			tr, err = s.transferService.Approve(tr.ID)
@@ -71,27 +68,25 @@ func (s *ProcessingService) Transaction(ctx context.Context, channel chan<- stri
 	}
 
 	if err != nil {
-		log.Printf("tranfer update status: %+v", err)
+		return fmt.Errorf("tranfer failed to update status: %+v", err)
 	}
 
-	if tr.Status == transfer.Approved {
-		if tr.Receiver != (uuid.UUID{}) && tr.Receiver == receiverAcc.ID {
-			receiverAcc.Balance += float64(tr.Amount)
+	if tr.Status == transfer.Approved && tr.Receiver != emptyID {
+		receiverAcc, err = s.accountService.GetByID(tr.Receiver)
+		if err != nil {
+			return err
 		}
-		if tr.Sender != (uuid.UUID{}) && tr.Sender == senderAcc.ID {
-			senderAcc.Balance -= float64(tr.Amount)
-		}
-	}
 
-	if tr.Sender != (uuid.UUID{}) {
-		if err := s.accountService.Update(*senderAcc); err != nil {
-			log.Println("couln't update sender account")
-		}
-	}
-
-	if tr.Receiver != (uuid.UUID{}) {
+		receiverAcc.Balance += float64(tr.Amount)
 		if err := s.accountService.Update(*receiverAcc); err != nil {
-			log.Println("couln't update sender account")
+			return fmt.Errorf("couln't update sender account: %v", err)
+		}
+	}
+
+	if tr.Status == transfer.Approved && tr.Sender != emptyID {
+		senderAcc.Balance -= float64(tr.Amount)
+		if err := s.accountService.Update(*senderAcc); err != nil {
+			return fmt.Errorf("couln't update sender account: %v", err)
 		}
 	}
 
@@ -104,7 +99,7 @@ func (s *ProcessingService) Transaction(ctx context.Context, channel chan<- stri
 		channel <- message
 	}
 
-	fmt.Println("finish bg job")
+	fmt.Println("Transaction processed")
 	ctx.Done()
 
 	return nil
